@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "581873080046",
+    "project_id": "realtimetrackerapp-53e70",
+    "storage_bucket": "realtimetrackerapp-53e70.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:581873080046:android:b9d1b3c9c292c1efc285ff",
+        "android_client_info": {
+          "package_name": "com.fedaa.realtimetracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDO_iwJfSqjFfddpYqATMpwxZAWF6T-Zh8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
