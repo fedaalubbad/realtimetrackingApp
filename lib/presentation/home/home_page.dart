@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:realtimetracker/data/models/user_model.dart';
+import '../../data/models/location_model.dart';
 import '../../logic/auth/auth_bloc.dart';
 import '../../logic/auth/auth_event.dart';
 import '../../logic/auth/auth_state.dart';
@@ -12,20 +14,56 @@ import '../auth/login_page.dart';
 class HomePage extends StatefulWidget {
   final String userId;
 
-  const HomePage({required this.userId, Key? key}) : super(key: key);
+  const HomePage({required this.userId, super.key});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   GoogleMapController? _mapController;
+  final Set<Marker> _markers = {};
+   LocationModel? _currentUser;
 
   @override
   void initState() {
     super.initState();
-    // ابدأ تتبع الموقع
-    context.read<LocationBloc>().add(StartTracking());
+
+    context.read<LocationBloc>().add(StartTracking(userId: widget.userId));
+
+  }
+  void _updateMarkers(List<LocationModel> locations) {
+    _markers.clear();
+    for (var loc in locations) {
+      _markers.add(
+        Marker(
+          markerId: MarkerId(loc.userId),
+          position: LatLng(loc.latitude, loc.longitude),
+          infoWindow: InfoWindow(
+            title: loc.userId == widget.userId ? "You" : loc.userId,
+          ),
+          icon: loc.userId == widget.userId
+              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue)
+              : BitmapDescriptor.defaultMarker,
+        ),
+      );
+    }
+    print("markers${_markers.length}");
+
+    // حدّث الكاميرا لموقع المستخدم الحالي
+    _currentUser = locations.firstWhere(
+          (loc) => loc.userId == widget.userId,
+      orElse: () => locations.first,
+    );
+    // أول ما يدخل المستخدم نرسل حدث لبدء التتبع
+
+    _mapController?.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(target: LatLng(_currentUser!.latitude, _currentUser!.longitude), zoom: 14),
+      ),
+    );
+
+    // setState(() {});
   }
 
   @override
@@ -35,16 +73,16 @@ class _HomePageState extends State<HomePage> {
         if (state is AuthUnauthenticated) {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => LoginPage()),
-            (route) => false,
+                (route) => false,
           );
         }
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text("Home"),
+          title: const Text("Home"),
           actions: [
             IconButton(
-              icon: Icon(Icons.logout),
+              icon: const Icon(Icons.logout),
               onPressed: () {
                 context.read<AuthBloc>().add(LogoutRequested());
               },
@@ -56,31 +94,43 @@ class _HomePageState extends State<HomePage> {
             if (state is LocationLoadInProgress) {
               return const Center(child: CircularProgressIndicator());
             } else if (state is LocationLoadSuccess) {
-              final LatLng currentPosition = LatLng(
-                state.latitude,
-                state.longitude,
-              );
+              _updateMarkers(state.locations); // تحديث الماركرز
 
               return GoogleMap(
                 onMapCreated: (controller) {
                   _mapController = controller;
-                  _mapController!.animateCamera(
-                    CameraUpdate.newCameraPosition(
-                      CameraPosition(target: currentPosition, zoom: 15),
-                    ),
-                  );
+                  if (state.locations.isNotEmpty) {
+                            _mapController!.animateCamera(
+                      CameraUpdate.newCameraPosition(
+                        CameraPosition(
+                          target: LatLng(_currentUser!.latitude, _currentUser!.longitude),
+                          zoom: 14,
+                        ),
+                      ),
+                    );
+                  }
                 },
-                initialCameraPosition: CameraPosition(
-                  target: currentPosition,
-                  zoom: 14,
+                initialCameraPosition: const CameraPosition(
+                  target: LatLng(0, 0),
+                  zoom: 2,
                 ),
-                markers: {
-                  Marker(
-                    markerId: const MarkerId("me"),
-                    position: currentPosition,
-                    infoWindow: const InfoWindow(title: "You are here"),
-                  ),
-                },
+                markers: _markers,
+                // markers: state.locations.map((loc) {
+                //   return Marker(
+                //     markerId: MarkerId(loc.userId),
+                //     position: LatLng(loc.latitude, loc.longitude),
+                //     infoWindow: InfoWindow(
+                //       title: loc.userId == widget.userId
+                //           ? "Me"
+                //           : "User: ${loc.userId}",
+                //     ),
+                //     icon: loc.userId == widget.userId
+                //         ? BitmapDescriptor.defaultMarkerWithHue(
+                //       BitmapDescriptor.hueAzure,
+                //     )
+                //         : BitmapDescriptor.defaultMarker,
+                //   );
+                // }).toSet(),
               );
             } else if (state is LocationLoadFailure) {
               return Center(child: Text("Error: ${state.error}"));
@@ -95,7 +145,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    _mapController?.dispose();
+    // _mapController?.dispose();
     super.dispose();
   }
 }

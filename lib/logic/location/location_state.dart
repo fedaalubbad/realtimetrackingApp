@@ -1,29 +1,26 @@
 import 'package:equatable/equatable.dart';
+import '../../data/models/location_model.dart';
 
 abstract class LocationState extends Equatable {
   @override
   List<Object?> get props => [];
 }
 
-class LocationInitial extends LocationState {}
-
 class LocationLoadInProgress extends LocationState {}
 
 class LocationLoadSuccess extends LocationState {
+  final List<LocationModel> locations;
 
-  final double latitude;
-  final double longitude;
-
-  LocationLoadSuccess(this.latitude, this.longitude);
+  LocationLoadSuccess({required this.locations});
 
   @override
-  List<Object?> get props => [latitude, longitude];
+  List<Object?> get props => [locations];
 }
 
 class LocationLoadFailure extends LocationState {
   final String error;
 
-  LocationLoadFailure(this.error);
+  LocationLoadFailure({required this.error});
 
   @override
   List<Object?> get props => [error];

@@ -1,31 +1,29 @@
-import 'package:geolocator/geolocator.dart';
+import 'package:firebase_database/firebase_database.dart';
+import '../models/location_model.dart';
 
 class LocationRepository {
-  Future<Position> getCurrentLocation() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+  final DatabaseReference _db = FirebaseDatabase.instance.ref().child('locations');
 
-    // Check service
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw Exception("Location services are disabled.");
-    }
+  // تحديث موقع المستخدم
+  Future<void> updateUserLocation(LocationModel location) async {
+    await _db.child(location.userId).set(location.toMap());
 
-    // Check permission
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        throw Exception("Location permissions are denied");
-      }
-    }
 
-    if (permission == LocationPermission.deniedForever) {
-      throw Exception("Location permissions are permanently denied.");
-    }
+  }
 
-    return await Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-    );
+  // استمع لمواقع جميع المستخدمين realtime
+  Stream<List<LocationModel>> getAllUsersLocations() {
+    return _db.onValue.map((event) {
+      final data = event.snapshot.value as Map<dynamic, dynamic>? ?? {};
+      final List<LocationModel> locations = [];
+      data.forEach((key, value) {
+        locations.add(LocationModel.fromMap(key, Map<String, dynamic>.from(value)));
+      });
+      return locations;
+    });
+  }
+
+  void dispose() {
+    // إذا كنت بحاجة لإلغاء أي StreamController داخلي (حالياً لا يوجد)
   }
 }
